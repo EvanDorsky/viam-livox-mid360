@@ -94,7 +94,7 @@ func (c *mid360Camera) Properties(ctx context.Context) (camera.Properties, error
 }
 
 func (c *mid360Camera) Images(ctx context.Context, filterSourceNames []string, extra map[string]interface{}) ([]camera.NamedImage, resource.ResponseMetadata, error) {
-	return nil, resource.ResponseMetadata{}, fmt.Errorf("Images not implemented for LiDAR camera")
+	return []camera.NamedImage{}, resource.ResponseMetadata{}, nil
 }
 
 func (c *mid360Camera) Geometries(ctx context.Context, extra map[string]interface{}) ([]spatialmath.Geometry, error) {
