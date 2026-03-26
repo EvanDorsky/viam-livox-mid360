@@ -72,9 +72,9 @@ func (c *mid360Camera) NextPointCloud(ctx context.Context, extra map[string]inte
 	pc := pointcloud.NewBasicEmpty()
 	for _, p := range pts {
 		vec := r3.Vector{
-			X: float64(p.X) / 1000.0,
-			Y: float64(p.Y) / 1000.0,
-			Z: float64(p.Z) / 1000.0,
+			X: float64(p.X),
+			Y: float64(p.Y),
+			Z: float64(p.Z),
 		}
 		r := p.Reflectivity
 		d := pointcloud.NewColoredData(color.NRGBA{R: r, G: r, B: r, A: 255})
