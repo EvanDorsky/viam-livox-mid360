@@ -19,6 +19,7 @@ $(SDK_STATIC_LIB):
 	# Restore patched files
 	cd $(SDK_DIR) && mv sdk_core/CMakeLists.txt.bak sdk_core/CMakeLists.txt
 	cd $(SDK_DIR) && mv sdk_core/device_manager.cpp.bak2 sdk_core/device_manager.cpp
+	cd $(SDK_DIR) && [ -f sdk_core/comm/define.h.bak3 ] && mv sdk_core/comm/define.h.bak3 sdk_core/comm/define.h || true
 
 build: sdk
 	go build -o $(MODULE_BIN) .

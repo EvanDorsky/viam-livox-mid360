@@ -1,5 +1,5 @@
 #!/bin/bash
-# Apply macOS compatibility patches to Livox-SDK2 source (build-time only)
+# Apply compatibility patches to Livox-SDK2 source (build-time only, not committed)
 set -e
 
 SDK_DIR="$1"
@@ -10,11 +10,19 @@ fi
 
 DM="$SDK_DIR/sdk_core/device_manager.cpp"
 CM="$SDK_DIR/sdk_core/CMakeLists.txt"
+DH="$SDK_DIR/sdk_core/comm/define.h"
 
-# 1. Remove -Werror for Apple clang
+# 1. Remove -Werror (fails on Apple clang and newer GCC)
 sed -i.bak 's/-Werror //g' "$CM"
 
-# 2. Patch device_manager.cpp for macOS
+# 2. GCC 13+: add missing <cstdint> include to define.h
+if ! grep -q '<cstdint>' "$DH"; then
+    cp "$DH" "$DH.bak3"
+    sed -i '1s|^|#include <cstdint>\n|' "$DH"
+    echo "Added <cstdint> to define.h for GCC 13+ compat"
+fi
+
+# 3. Patch device_manager.cpp for macOS broadcast issues
 cp "$DM" "$DM.bak2"
 
 python3 - "$DM" << 'PYEOF'
@@ -36,7 +44,7 @@ src = src.replace(
     return false;
   }''',
     '''  if (detection_broadcast_socket_ < 0) {
-    LOG_ERROR("Create detection broadcast socket failed (non-fatal on macOS).");
+    LOG_ERROR("Create detection broadcast socket failed (non-fatal).");
     // Non-fatal: continue without broadcast detection
   }'''
 )
@@ -88,7 +96,7 @@ new_detection = '''void DeviceManager::Detection() {
   int size = 0;
   comm_port_->Pack(buf.data(), kMaxCommandBufferSize, (uint32_t *)&size, packet);
 
-  // macOS: send discovery directly to each configured lidar IP (broadcast to 255.255.255.255 fails on macOS)
+  // Send discovery directly to each configured lidar IP (broadcast to 255.255.255.255 fails on macOS)
   if (lidars_cfg_ptr_) {
     for (const auto& cfg : *lidars_cfg_ptr_) {
       if (cfg.lidar_net_info.lidar_ipaddr.empty()) continue;
@@ -115,6 +123,5 @@ with open(sys.argv[1], 'w') as f:
     f.write(src)
 
 PYEOF
-echo "$DM"
 
-echo "macOS patches applied."
+echo "Patches applied."
