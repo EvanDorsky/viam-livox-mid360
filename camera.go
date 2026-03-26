@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"time"
 
 	"github.com/golang/geo/r3"
@@ -75,7 +76,10 @@ func (c *mid360Camera) NextPointCloud(ctx context.Context, extra map[string]inte
 			Y: float64(p.Y) / 1000.0,
 			Z: float64(p.Z) / 1000.0,
 		}
-		if err := pc.Set(vec, pointcloud.NewValueData(int(p.Reflectivity))); err != nil {
+		r := p.Reflectivity
+		d := pointcloud.NewColoredData(color.NRGBA{R: r, G: r, B: r, A: 255})
+		d.SetValue(int(r))
+		if err := pc.Set(vec, d); err != nil {
 			c.logger.Debugw("failed to set point", "error", err)
 		}
 	}
