@@ -263,3 +263,71 @@ import "C"
 - `make sdk`: clone + build Livox-SDK2
 - `make build`: build the Go module binary
 - `make all`: sdk + build
+
+## Test Plan
+
+### Prerequisites
+- Mid-360 powered on and connected via Ethernet
+- Host machine on same subnet (default Mid-360 IP: 192.168.1.1xx)
+- Confirm connectivity: `ping <sensor_ip>`
+
+### Phase 1: Standalone binary smoke test (no Viam server)
+
+Write a minimal test harness (`cmd/test/main.go`) that:
+1. Initializes the SDK manager directly with a hardcoded config
+2. Waits for the InfoChangeCallback to fire (device discovery)
+3. Calls `NextPointCloud` equivalent (reads from the frame buffer)
+4. Prints IMU readings from the atomic store
+
+**Pass criteria:**
+- [ ] "Livox device connected" message prints within ~5s
+- [ ] Point cloud frames arrive (~10Hz)
+- [ ] Frame sizes are reasonable (~15k-25k points per frame at 10Hz)
+- [ ] Point coordinates are in plausible range (not all zeros, not NaN, within ~200m)
+- [ ] IMU data arrives and updates
+- [ ] Gyro at rest: all axes near zero (< 0.1 rad/s)
+- [ ] Accel at rest: one axis ~1g (9.8 m/s²), others near zero
+- [ ] Timestamps are non-zero and monotonically increasing
+- [ ] Clean shutdown (no crash, no hang)
+
+### Phase 2: Viam module integration
+
+Run as a Viam module with a local `viam-server`:
+```bash
+viam-server -config test_config.json
+```
+
+With a config that registers both components. Then use the Viam CLI or app to:
+
+1. **Camera component**
+   - [ ] Component appears in the control tab
+   - [ ] `GetPointCloud` returns PCD data
+   - [ ] Point cloud visualizes correctly in the Viam app (3D view)
+   - [ ] Repeated calls return fresh frames (not stale data)
+
+2. **MovementSensor component**
+   - [ ] Component appears in the control tab
+   - [ ] `GetReadings` returns angular_velocity and linear_acceleration
+   - [ ] Values update in real time
+   - [ ] Properties reports AngularVelocitySupported=true, LinearAccelerationSupported=true
+   - [ ] Unimplemented methods (Position, CompassHeading, etc.) return proper errors
+
+3. **Lifecycle**
+   - [ ] Module starts cleanly when viam-server launches
+   - [ ] Reconfigure (change sensor_ip) works or fails gracefully
+   - [ ] Module shuts down cleanly when viam-server stops (no zombie processes, no UDP socket leaks)
+   - [ ] Removing one component doesn't break the other (ref counting)
+
+### Phase 3: Edge cases
+
+- [ ] Module starts before lidar is powered on — should wait, connect when lidar comes up
+- [ ] Lidar power-cycled while module is running — should recover or error cleanly
+- [ ] Multiple rapid `NextPointCloud` calls — should not deadlock or return partial frames
+- [ ] Context cancellation mid-wait — should return promptly, not block
+
+### What we're NOT testing yet
+- PTP time sync verification (need PTP master on network)
+- GPS/RMC time sync (not implemented)
+- Multi-lidar (single device for now)
+- Performance benchmarking / sustained throughput
+- Cross-compilation / Linux arm64 build
