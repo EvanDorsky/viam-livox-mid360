@@ -10,17 +10,12 @@ fi
 
 DM="$SDK_DIR/sdk_core/device_manager.cpp"
 CM="$SDK_DIR/sdk_core/CMakeLists.txt"
-DH="$SDK_DIR/sdk_core/comm/define.h"
 
-# 1. Remove -Werror (fails on Apple clang and newer GCC)
-sed -i.bak 's/-Werror //g' "$CM"
-
-# 2. GCC 13+: add missing <cstdint> include to define.h
-if ! grep -q '<cstdint>' "$DH"; then
-    cp "$DH" "$DH.bak3"
-    sed -i '1s|^|#include <cstdint>\n|' "$DH"
-    echo "Added <cstdint> to define.h for GCC 13+ compat"
-fi
+# 1. Remove -Werror and add -include cstdint for GCC 13+ compat
+sed -i.bak \
+    -e 's/-Werror //g' \
+    -e 's/-Wall/-Wall -include cstdint/g' \
+    "$CM"
 
 # 3. Patch device_manager.cpp for macOS broadcast issues
 cp "$DM" "$DM.bak2"
