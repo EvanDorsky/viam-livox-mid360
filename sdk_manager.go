@@ -92,6 +92,7 @@ func (m *sdkManager) generateConfig(cfg *Config) (string, error) {
 					"point_data_port": 56301,
 					"imu_data_port":   56401,
 					"log_data_port":   56501,
+					"lidar_ip":        []string{cfg.SensorIP},
 				},
 			},
 		},
