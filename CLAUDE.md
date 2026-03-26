@@ -110,8 +110,8 @@ type frameBuffer struct {
 }
 ```
 
-When `frame_cnt` in an incoming packet differs from `frameCnt`, the writing buffer is complete:
-- Lock, swap writing↔reading, update frameCnt, unlock, signal `ready`
+The Mid-360 does not increment `frame_cnt` in packet headers (always 0). Instead, we use **time-based framing**: when the timestamp gap between the first packet in the current accumulation buffer and a new packet exceeds 100ms, the buffer is complete:
+- Lock, swap writing↔reading, signal `ready`
 
 `NextPointCloud()` waits on `ready` (with ctx deadline), then converts reading buffer to `pointcloud.PointCloud`.
 

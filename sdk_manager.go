@@ -86,7 +86,6 @@ func (m *sdkManager) generateConfig(cfg *Config) (string, error) {
 			"host_net_info": []map[string]interface{}{
 				{
 					"host_ip":         cfg.HostIP,
-					"multicast_ip":    "224.1.1.5",
 					"cmd_data_port":   56101,
 					"push_msg_port":   56201,
 					"point_data_port": 56301,

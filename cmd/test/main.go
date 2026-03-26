@@ -56,6 +56,7 @@ var (
 	imuCount   uint64
 	connected  int32
 	deviceHandle uint32
+	pclCbCount uint64
 )
 
 //export goPointCloudCallback
@@ -64,6 +65,12 @@ func goPointCloudCallback(handle C.uint32_t, devType C.uint8_t, data *C.LivoxLid
 	fc := uint8(C.pkt_frame_cnt(pkt))
 	dotNum := uint16(C.pkt_dot_num(pkt))
 	dataType := uint8(C.pkt_data_type(pkt))
+
+	n := atomic.AddUint64(&pclCbCount, 1)
+	if n <= 5 || n%1000 == 0 {
+		fmt.Printf("[PCL] #%d: dataType=%d dotNum=%d frameCnt=%d ts=%d\n",
+			n, dataType, dotNum, fc, binary.LittleEndian.Uint64(func() []byte { var b [8]byte; C.pkt_timestamp(pkt, (*C.uint8_t)(unsafe.Pointer(&b[0]))); return b[:] }()))
+	}
 
 	var tsBuf [8]byte
 	C.pkt_timestamp(pkt, (*C.uint8_t)(unsafe.Pointer(&tsBuf[0])))
@@ -76,7 +83,9 @@ func goPointCloudCallback(handle C.uint32_t, devType C.uint8_t, data *C.LivoxLid
 	mu.Lock()
 	defer mu.Unlock()
 
-	if initialized && fc != frameCnt {
+	// Time-based framing: accumulate 100ms of data per frame (~10Hz)
+	const frameIntervalNs = 100_000_000 // 100ms in nanoseconds
+	if initialized && ts-writeTimestamp >= frameIntervalNs {
 		reading = writing
 		writing = nil
 		readTimestamp = writeTimestamp
@@ -88,7 +97,6 @@ func goPointCloudCallback(handle C.uint32_t, devType C.uint8_t, data *C.LivoxLid
 		}
 	}
 
-	frameCnt = fc
 	initialized = true
 	if len(writing) == 0 {
 		writeTimestamp = ts
@@ -159,7 +167,6 @@ func generateConfig(sensorIP, hostIP string) (string, error) {
 			"host_net_info": []map[string]interface{}{
 				{
 					"host_ip":         hostIP,
-					"multicast_ip":    "224.1.1.5",
 					"cmd_data_port":   56101,
 					"push_msg_port":   56201,
 					"point_data_port": 56301,
@@ -226,28 +233,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Wait for connection or timeout
-	fmt.Println("[SDK] Waiting for device...")
-	connectTimeout := time.After(10 * time.Second)
-	connectTick := time.NewTicker(100 * time.Millisecond)
-	defer connectTick.Stop()
-
-waitConnect:
-	for {
-		select {
-		case <-connectTimeout:
-			fmt.Fprintf(os.Stderr, "Timed out waiting for device connection\n")
-			return
-		case <-connectTick.C:
-			if atomic.LoadInt32(&connected) == 1 {
-				fmt.Println("[SDK] Device connected!")
-				break waitConnect
-			}
-		}
-	}
-
-	// Collect data for the specified duration
-	fmt.Printf("\nCollecting data for %s...\n\n", *duration)
+	// Start collecting immediately — don't block on InfoChangeCallback
+	fmt.Printf("\nCollecting data for %s (waiting for device + data)...\n\n", *duration)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -283,8 +270,12 @@ waitConnect:
 				avgPts = tp / fc
 			}
 
-			fmt.Printf("[%5.1fs] frames: %d (+%d/s, ~%d pts/frame)  imu: %d (+%d/s)",
-				time.Since(start).Seconds(), fc, frameDelta, avgPts, ic, imuDelta)
+			connStatus := "waiting"
+			if atomic.LoadInt32(&connected) == 1 {
+				connStatus = "connected"
+			}
+			fmt.Printf("[%5.1fs] %s  frames: %d (+%d/s, ~%d pts/frame)  imu: %d (+%d/s)",
+				time.Since(start).Seconds(), connStatus, fc, frameDelta, avgPts, ic, imuDelta)
 
 			// Print latest IMU reading
 			if v := latestIMU.Load(); v != nil {

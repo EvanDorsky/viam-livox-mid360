@@ -52,7 +52,6 @@ var (
 //export goPointCloudCallback
 func goPointCloudCallback(handle C.uint32_t, devType C.uint8_t, data *C.LivoxLidarEthernetPacket) {
 	pkt := unsafe.Pointer(data)
-	frameCnt := uint8(C.pkt_frame_cnt(pkt))
 	dotNum := uint16(C.pkt_dot_num(pkt))
 	dataType := uint8(C.pkt_data_type(pkt))
 
@@ -68,9 +67,9 @@ func goPointCloudCallback(handle C.uint32_t, devType C.uint8_t, data *C.LivoxLid
 	frames.mu.Lock()
 	defer frames.mu.Unlock()
 
-	// Detect frame boundary
-	if frames.initialized && frameCnt != frames.frameCnt {
-		// Current writing buffer is a complete frame — swap
+	// Time-based framing: accumulate 100ms of data per frame (~10Hz)
+	const frameIntervalNs = 100_000_000 // 100ms
+	if frames.initialized && ts-frames.writeTimestamp >= frameIntervalNs {
 		frames.reading, frames.writing = frames.writing, frames.reading[:0]
 		frames.readTimestamp = frames.writeTimestamp
 		select {
@@ -79,7 +78,6 @@ func goPointCloudCallback(handle C.uint32_t, devType C.uint8_t, data *C.LivoxLid
 		}
 	}
 
-	frames.frameCnt = frameCnt
 	frames.initialized = true
 	if len(frames.writing) == 0 {
 		frames.writeTimestamp = ts
