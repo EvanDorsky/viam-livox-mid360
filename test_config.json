@@ -1,0 +1,32 @@
+{
+  "network": {
+    "bind_address": "0.0.0.0:18080"
+  },
+  "modules": [
+    {
+      "name": "livox-mid360",
+      "executable_path": "/home/viam-mugger/viam/viam-livox-mid360/livox-mid-360",
+      "type": "local"
+    }
+  ],
+  "components": [
+    {
+      "name": "lidar",
+      "api": "rdk:component:camera",
+      "model": "viam:livox:mid360",
+      "attributes": {
+        "sensor_ip": "192.168.1.196",
+        "host_ip": "192.168.1.10"
+      }
+    },
+    {
+      "name": "imu",
+      "api": "rdk:component:movement_sensor",
+      "model": "viam:livox:mid360-imu",
+      "attributes": {
+        "sensor_ip": "192.168.1.196",
+        "host_ip": "192.168.1.10"
+      }
+    }
+  ]
+}
