@@ -176,3 +176,7 @@ func (c *mid360Camera) Close(ctx context.Context) error {
 func (c *mid360Camera) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
 	return nil, fmt.Errorf("DoCommand not implemented")
 }
+
+func (c *mid360Camera) Status(ctx context.Context) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}

@@ -146,3 +146,7 @@ func (m *mid360IMU) Close(ctx context.Context) error {
 func (m *mid360IMU) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
 	return nil, fmt.Errorf("DoCommand not implemented")
 }
+
+func (m *mid360IMU) Status(ctx context.Context) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}
