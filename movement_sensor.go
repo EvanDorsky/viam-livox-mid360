@@ -24,8 +24,8 @@ func init() {
 }
 
 type mid360IMU struct {
+	resource.Named
 	resource.AlwaysRebuild
-	name   resource.Name
 	logger logging.Logger
 }
 
@@ -45,13 +45,9 @@ func newMid360IMU(
 	}
 
 	return &mid360IMU{
-		name:   conf.ResourceName(),
+		Named:  conf.ResourceName().AsNamed(),
 		logger: logger,
 	}, nil
-}
-
-func (m *mid360IMU) Name() resource.Name {
-	return m.name
 }
 
 func (m *mid360IMU) AngularVelocity(ctx context.Context, extra map[string]interface{}) (spatialmath.AngularVelocity, error) {
@@ -141,8 +137,4 @@ func (m *mid360IMU) Readings(ctx context.Context, extra map[string]interface{}) 
 func (m *mid360IMU) Close(ctx context.Context) error {
 	sdkMgr.Release()
 	return nil
-}
-
-func (m *mid360IMU) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	return nil, fmt.Errorf("DoCommand not implemented")
 }

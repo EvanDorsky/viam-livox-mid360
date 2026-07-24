@@ -29,8 +29,8 @@ func init() {
 }
 
 type mid360Camera struct {
+	resource.Named
 	resource.AlwaysRebuild
-	name   resource.Name
 	logger logging.Logger
 }
 
@@ -50,13 +50,9 @@ func newMid360Camera(
 	}
 
 	return &mid360Camera{
-		name:   conf.ResourceName(),
+		Named:  conf.ResourceName().AsNamed(),
 		logger: logger,
 	}, nil
-}
-
-func (c *mid360Camera) Name() resource.Name {
-	return c.name
 }
 
 // getLatestFrame waits for and returns a copy of the latest point data.
@@ -171,8 +167,4 @@ func (c *mid360Camera) Geometries(ctx context.Context, extra map[string]interfac
 func (c *mid360Camera) Close(ctx context.Context) error {
 	sdkMgr.Release()
 	return nil
-}
-
-func (c *mid360Camera) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	return nil, fmt.Errorf("DoCommand not implemented")
 }
